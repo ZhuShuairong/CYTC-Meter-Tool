@@ -6,6 +6,7 @@ from ultralytics import YOLO
 import easyocr
 import numpy as np
 from datetime import datetime
+import shutil
 
 # Initialize session state variables
 if "annotations" not in st.session_state:
@@ -66,7 +67,6 @@ def crop_image(image_path, detections):
     for bbox in detections:
         x1, y1, x2, y2 = bbox
         cropped_image = image.crop((x1, y1, x2, y2))
-        # Save the cropped image with a unique filename
         global_crop_counter += 1
         cropped_filename = f"crop_{global_crop_counter}.jpg"
         cropped_path = os.path.join(yoloed_dir, cropped_filename)
@@ -76,11 +76,8 @@ def crop_image(image_path, detections):
 
 # Function to perform OCR on a cropped image
 def perform_ocr(image):
-    # Convert PIL Image to NumPy array
     image_np = np.array(image)
-    # Perform OCR using EasyOCR
     result = reader.readtext(image_np, detail=0)
-    # Extract numbers only from the OCR result
     numbers = ''.join(filter(str.isdigit, ''.join(result)))
     return numbers.strip()
 
@@ -95,11 +92,9 @@ if uploaded_files:
     st.session_state.annotations.clear()
     progress_bar = st.progress(0)
     for i, uploaded_file in enumerate(uploaded_files):
-        # Save the uploaded file temporarily
         image_path = os.path.join(original_dir, uploaded_file.name)
         with open(image_path, "wb") as f:
             f.write(uploaded_file.getbuffer())
-        # Detect objects using YOLO
         detections = detect_objects(image_path)
         if detections:
             cropped_images = crop_image(image_path, detections)
@@ -108,7 +103,7 @@ if uploaded_files:
                     "image_path": image_path,
                     "cropped_image": cropped_image,
                     "meter_value": perform_ocr(cropped_image),
-                    "room_number": ""  # Initialize room number as empty
+                    "room_number": ""
                 }
                 st.session_state.annotations.append(annotation)
         else:
@@ -116,10 +111,9 @@ if uploaded_files:
                 "image_path": image_path,
                 "cropped_image": None,
                 "meter_value": "",
-                "room_number": ""  # Initialize room number as empty
+                "room_number": ""
             }
             st.session_state.annotations.append(annotation)
-        # Update progress bar
         progress_bar.progress((i + 1) / len(uploaded_files))
     st.success("All images processed successfully!")
 
@@ -133,17 +127,17 @@ if st.session_state.annotations:
         value=st.session_state.current_index,
         step=1
     )
-    st.session_state.current_index = current_index  # Persist index in session state
+    st.session_state.current_index = current_index
     annotation = st.session_state.annotations[current_index]
 
     # Display original image
     original_image = Image.open(annotation["image_path"])
-    st.image(original_image, caption="Original Image", use_column_width=True)
+    st.image(original_image, caption="Original Image", use_container_width=True)
 
     # Display cropped image
     cropped_image = annotation["cropped_image"]
     if cropped_image:
-        st.image(cropped_image, caption="Cropped Image", use_column_width=True)
+        st.image(cropped_image, caption="Cropped Image", use_container_width=True)
 
     # Room Number Input
     room_number = st.text_input("Room Number", value=annotation["room_number"])
@@ -156,39 +150,42 @@ if st.session_state.annotations:
     # Navigation Buttons
     col1, col2 = st.columns([1, 1])
     with col1:
-        if st.button("Previous", disabled=(current_index == 0)):
+        if st.button("Previous", disabled=(st.session_state.current_index == 0)):
+            st.session_state.annotations[st.session_state.current_index]["room_number"] = room_number
+            st.session_state.annotations[st.session_state.current_index]["meter_value"] = meter_value
             st.session_state.current_index -= 1
     with col2:
-        if st.button("Next", disabled=(current_index == len(st.session_state.annotations) - 1)):
+        if st.button("Next", disabled=(st.session_state.current_index == len(st.session_state.annotations) - 1)):
+            st.session_state.annotations[st.session_state.current_index]["room_number"] = room_number
+            st.session_state.annotations[st.session_state.current_index]["meter_value"] = meter_value
             st.session_state.current_index += 1
 
 # Step 3: Export Results
 if st.session_state.annotations:
     st.header("Step 3: Export Results")
     if st.button("Export to Excel"):
-        # Prepare data for export
-        data = []
-        for annotation in st.session_state.annotations:
-            data.append({
-                "room_number": annotation["room_number"],
-                "meter_value": annotation["meter_value"]
-            })
-        # Create a DataFrame and export to Excel
-        df = pd.DataFrame(data)
-        today_date = datetime.now().strftime("%Y-%m-%d")  # Format: YYYY-MM-DD
-        folder_name = f"electricity_meter_values_{today_date}"
-        os.makedirs(folder_name, exist_ok=True)  # Create the folder if it doesn't exist
+        output_excel = "results.xlsx"
+        folder_name = f"electricity_meter_values_{datetime.now().strftime('%Y-%m-%d')}"
+        os.makedirs(folder_name, exist_ok=True)
         output_path = os.path.join(folder_name, output_excel)
+
+        # Prepare data for export
+        data = [{"room_number": ann["room_number"], "meter_value": ann["meter_value"]} for ann in st.session_state.annotations]
+        df = pd.DataFrame(data)
         df.to_excel(output_path, index=False)
-        # Save original images renamed to room numbers
+
+        # Save images renamed to room numbers
         for annotation in st.session_state.annotations:
             room_number = annotation["room_number"]
-            if room_number:  # Only proceed if room number is not empty
+            if room_number:
                 original_image_path = annotation["image_path"]
                 original_image = Image.open(original_image_path)
-                new_image_name = f"{room_number}.jpg"  # Use room number as the filename
+                new_image_name = f"{room_number}.jpg"
                 new_image_path = os.path.join(folder_name, new_image_name)
                 original_image.save(new_image_path)
-        st.success(f"Excel file and images saved successfully in '{folder_name}' folder.")
+
+        # Create a zip archive of the folder
+        shutil.make_archive(folder_name, 'zip', folder_name)
+        st.success(f"Zip file '{folder_name}.zip' created successfully.")
 else:
     st.warning("No images to annotate or export. Please upload images first.")
