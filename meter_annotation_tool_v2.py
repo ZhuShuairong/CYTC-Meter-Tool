@@ -81,32 +81,29 @@ def perform_ocr(image):
     return numbers.strip()
 
 # Function to load images and process them one by one
-def load_images_with_progress(folder_path):
+def load_images_with_progress(uploaded_files):
     global annotations, current_index
     try:
         # Clear previous annotations
         annotations.clear()
         current_index = 0
-        # Get list of images
-        image_files = [f for f in os.listdir(folder_path) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
-        total_images = len(image_files)
+        total_images = len(uploaded_files)
         # Process images one by one
-        for i, image_file in enumerate(tqdm(image_files, desc="Processing Images")):
-            image_path = os.path.join(folder_path, image_file)
+        for i, uploaded_file in enumerate(tqdm(uploaded_files, desc="Processing Images")):
             # Save the original image
-            original_filename = os.path.basename(image_path)
+            original_filename = uploaded_file.name
             original_path = os.path.join(original_dir, original_filename)
-            original_image = Image.open(image_path)
+            original_image = Image.open(uploaded_file)
             original_image.save(original_path)
             # Detect objects using YOLO
-            detections = detect_objects(image_path)
+            detections = detect_objects(original_path)
             if detections:
                 # Crop the image using YOLO bounding boxes
-                cropped_images = crop_image(image_path, detections)
+                cropped_images = crop_image(original_path, detections)
                 # Perform OCR on each cropped image
                 for j, cropped_image in enumerate(cropped_images):
                     annotation = {
-                        "image_path": image_path,
+                        "image_path": original_path,
                         "cropped_image": cropped_image,
                         "meter_value": perform_ocr(cropped_image),
                         "original_image": original_image,
@@ -116,7 +113,7 @@ def load_images_with_progress(folder_path):
             else:
                 # If no detections, add the original image with no OCR result
                 annotation = {
-                    "image_path": image_path,
+                    "image_path": original_path,
                     "cropped_image": None,
                     "meter_value": "",
                     "original_image": original_image,
@@ -125,6 +122,8 @@ def load_images_with_progress(folder_path):
                 annotations.append(annotation)
             # Update progress bar
             progress_bar.progress((i + 1) / total_images)
+            # Log message
+            st.write(f"Processed image {i + 1}/{total_images}: {original_filename}")
         # Update GUI
         if annotations:
             current_index = 0
@@ -134,9 +133,9 @@ def load_images_with_progress(folder_path):
 
 # Function to start loading images in a separate thread
 def start_loading_images():
-    folder_path = st.session_state.folder_path
-    if folder_path:
-        threading.Thread(target=load_images_with_progress, args=(folder_path,), daemon=True).start()
+    uploaded_files = st.session_state.folder_path
+    if uploaded_files:
+        threading.Thread(target=load_images_with_progress, args=(uploaded_files,), daemon=True).start()
 
 # GUI Functions
 def update_gui():
@@ -209,7 +208,12 @@ def export_to_excel():
 st.title("Image Cropping Tool")
 
 # Folder Selection Button
-st.file_uploader("Upload Images", type=["png", "jpg", "jpeg"], accept_multiple_files=True, key="folder_path")
+uploaded_files = st.file_uploader("Upload Images", type=["png", "jpg", "jpeg"], accept_multiple_files=True, key="folder_path")
+if st.button("Process Images"):
+    if uploaded_files:
+        start_loading_images()
+    else:
+        st.warning("Please upload images first.")
 
 # Progress Bar
 progress_bar = st.progress(0.0)
