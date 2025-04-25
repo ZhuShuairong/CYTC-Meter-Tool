@@ -13,6 +13,8 @@ if "annotations" not in st.session_state:
     st.session_state.annotations = []
 if "current_index" not in st.session_state:
     st.session_state.current_index = 0
+if "model_initialized" not in st.session_state:
+    st.session_state.model_initialized = False
 
 # Directories for saving original and YOLO-ed images
 original_dir = "original_images"
@@ -22,14 +24,26 @@ yoloed_dir = "yoloed_images"
 os.makedirs(original_dir, exist_ok=True)
 os.makedirs(yoloed_dir, exist_ok=True)
 
-# Load the trained YOLO model
-model_path = "best.pt"
-if not os.path.exists(model_path):
-    raise FileNotFoundError(f"YOLO model not found at {model_path}. Ensure the model is in the correct location.")
-model = YOLO(model_path)
+# Cache the YOLO model initialization
+@st.cache_resource
+def load_model(model_path):
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(f"YOLO model not found at {model_path}. Ensure the model is in the correct location.")
+    return YOLO(model_path)
 
-# Initialize EasyOCR reader
-reader = easyocr.Reader(['en'])
+# Cache the EasyOCR reader initialization
+@st.cache_resource
+def initialize_reader():
+    return easyocr.Reader(['en'])
+
+# Initialize YOLO model and EasyOCR reader only once
+if not st.session_state.model_initialized:
+    model = load_model("best.pt")
+    reader = initialize_reader()
+    st.session_state.model_initialized = True
+else:
+    model = st.session_state.get("model", None)
+    reader = st.session_state.get("reader", None)
 
 # Global counter for cropped image filenames
 global_crop_counter = 0
@@ -43,6 +57,7 @@ def is_valid_image(image_path):
         return False
 
 # Function to run YOLO inference on a single image
+@st.cache_data
 def detect_objects(image_path):
     if not is_valid_image(image_path):
         st.warning(f"Invalid image: {image_path}")
@@ -75,6 +90,7 @@ def crop_image(image_path, detections):
     return cropped_images
 
 # Function to perform OCR on a cropped image
+@st.cache_data
 def perform_ocr(image):
     image_np = np.array(image)
     result = reader.readtext(image_np, detail=0)
