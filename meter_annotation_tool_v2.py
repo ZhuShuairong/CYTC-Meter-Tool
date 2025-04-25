@@ -95,25 +95,26 @@ if uploaded_files:
         image_path = os.path.join(original_dir, uploaded_file.name)
         with open(image_path, "wb") as f:
             f.write(uploaded_file.getbuffer())
+        
+        # Perform YOLO detection and OCR only once during upload
         detections = detect_objects(image_path)
         if detections:
             cropped_images = crop_image(image_path, detections)
-            for j, cropped_image in enumerate(cropped_images):
-                annotation = {
-                    "image_path": image_path,
-                    "cropped_image": cropped_image,
-                    "meter_value": perform_ocr(cropped_image),
-                    "room_number": ""
-                }
-                st.session_state.annotations.append(annotation)
+            ocr_results = [perform_ocr(cropped_image) for cropped_image in cropped_images]
         else:
+            cropped_images = []
+            ocr_results = [""]  # No detections, no OCR results
+        
+        # Store annotations in session state
+        for j, cropped_image in enumerate(cropped_images):
             annotation = {
                 "image_path": image_path,
-                "cropped_image": None,
-                "meter_value": "",
+                "cropped_image": cropped_image,
+                "meter_value": ocr_results[j],
                 "room_number": ""
             }
             st.session_state.annotations.append(annotation)
+        
         progress_bar.progress((i + 1) / len(uploaded_files))
     st.success("All images processed successfully!")
 
