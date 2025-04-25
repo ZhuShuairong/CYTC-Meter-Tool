@@ -4,7 +4,7 @@ pandas
 ultralytics==8.3.101  # Specify a compatible version
 easyocr
 numpy
-opencv-python-headless
+opencv-python-headless==4.11.0.86
 torch>=1.13.1  # Required by ultralytics
 torchvision>=0.14.1  # Required by ultralytics
 tqdm  # Required by ultralytics
