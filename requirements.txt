@@ -1,7 +1,7 @@
 streamlit
 Pillow
 pandas
-ultralytics
+ultralytics==8.3.101
 easyocr
 numpy
 opencv-python-headless
