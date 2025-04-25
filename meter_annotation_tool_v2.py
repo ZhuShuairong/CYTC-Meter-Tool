@@ -96,22 +96,26 @@ if uploaded_files:
         with open(image_path, "wb") as f:
             f.write(uploaded_file.getbuffer())
         
-        # Perform YOLO detection and OCR only once during upload
-        detections = detect_objects(image_path)
-        if detections:
-            cropped_images = crop_image(image_path, detections)
-            ocr_results = [perform_ocr(cropped_image) for cropped_image in cropped_images]
+        # Check if results are cached
+        cached_annotation = next((ann for ann in st.session_state.annotations if ann["image_path"] == image_path), None)
+        if cached_annotation:
+            detections = cached_annotation.get("detections", [])
+            ocr_results = cached_annotation.get("ocr_results", [""])
         else:
-            cropped_images = []
-            ocr_results = [""]  # No detections, no OCR results
+            # Perform YOLO detection and OCR only once during upload
+            detections = detect_objects(image_path)
+            cropped_images = crop_image(image_path, detections) if detections else []
+            ocr_results = [perform_ocr(cropped_image) for cropped_image in cropped_images] if cropped_images else [""]
         
         # Store annotations in session state
-        for j, cropped_image in enumerate(cropped_images):
+        for j, cropped_image in enumerate(cropped_images or []):
             annotation = {
                 "image_path": image_path,
                 "cropped_image": cropped_image,
                 "meter_value": ocr_results[j],
-                "room_number": ""
+                "room_number": "",
+                "detections": detections,  # Cache detections
+                "ocr_results": ocr_results  # Cache OCR results
             }
             st.session_state.annotations.append(annotation)
         
@@ -158,12 +162,16 @@ if st.session_state.annotations:
             st.session_state.annotations[current_index]["room_number"] = room_number
             st.session_state.annotations[current_index]["meter_value"] = meter_value
             st.session_state.current_index -= 1
+            # Reset room number for new image
+            st.session_state.annotations[st.session_state.current_index]["room_number"] = ""
     with col2:
         if st.button("Next", disabled=(current_index == max_index)):
             # Save current annotations before moving
             st.session_state.annotations[current_index]["room_number"] = room_number
             st.session_state.annotations[current_index]["meter_value"] = meter_value
             st.session_state.current_index += 1
+            # Reset room number for new image
+            st.session_state.annotations[st.session_state.current_index]["room_number"] = ""
 
 # Step 3: Export Results
 if st.session_state.annotations:
