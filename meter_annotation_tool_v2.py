@@ -27,9 +27,14 @@ os.makedirs(yoloed_dir, exist_ok=True)
 # Cache the YOLO model initialization
 @st.cache_resource
 def load_model(model_path):
-    if not os.path.exists(model_path):
-        raise FileNotFoundError(f"YOLO model not found at {model_path}. Ensure the model is in the correct location.")
-    return YOLO(model_path)
+    try:
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(f"YOLO model not found at {model_path}. Ensure the model is in the correct location.")
+        model = YOLO(model_path)
+        return model
+    except Exception as e:
+        st.error(f"Failed to load YOLO model: {e}")
+        st.stop()
 
 # Cache the EasyOCR reader initialization
 @st.cache_resource
@@ -37,24 +42,15 @@ def initialize_reader():
     return easyocr.Reader(['en'])
 
 # Initialize YOLO model and EasyOCR reader only once
-if not st.session_state.model_initialized:
+if not st.session_state.get("model_initialized", False):
     model = load_model("best.pt")
     reader = initialize_reader()
-    st.session_state.model_initialized = True
+    st.session_state["model"] = model
+    st.session_state["reader"] = reader
+    st.session_state["model_initialized"] = True
 else:
-    model = st.session_state.get("model", None)
-    reader = st.session_state.get("reader", None)
-
-# Global counter for cropped image filenames
-global_crop_counter = 0
-
-# Function to validate an image file
-def is_valid_image(image_path):
-    try:
-        Image.open(image_path)
-        return True
-    except IOError:
-        return False
+    model = st.session_state["model"]
+    reader = st.session_state["reader"]
 
 # Function to run YOLO inference on a single image
 @st.cache_data
@@ -62,6 +58,12 @@ def detect_objects(image_path):
     if not is_valid_image(image_path):
         st.warning(f"Invalid image: {image_path}")
         return []
+    
+    # Validate the model before use
+    if model is None:
+        st.error("Model is not initialized. Please check the model file and try again.")
+        st.stop()
+    
     try:
         results = model.predict(source=image_path, save=False, conf=0.25)
         detections = []
