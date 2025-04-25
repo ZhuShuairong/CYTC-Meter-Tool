@@ -20,7 +20,7 @@ yoloed_dir = "yoloed_images"
 os.makedirs(original_dir, exist_ok=True)
 os.makedirs(yoloed_dir, exist_ok=True)
 # Load the trained YOLO model
-model_path = "D:/MeterAnnotationTool/best.pt"
+model_path = "best.pt"
 if not os.path.exists(model_path):
     raise FileNotFoundError(f"YOLO model not found at {model_path}. Ensure the model is in the correct location.")
 model = YOLO(model_path)
