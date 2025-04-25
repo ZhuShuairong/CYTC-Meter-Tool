@@ -4,4 +4,4 @@ pandas
 ultralytics
 easyocr
 numpy
-opencv-python
+opencv-python-headless
