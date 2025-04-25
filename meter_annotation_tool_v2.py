@@ -120,10 +120,12 @@ if uploaded_files:
 # Step 2: Annotate Images
 if st.session_state.annotations:
     st.header("Step 2: Annotate Images")
+    # Constrain current_index to valid bounds
+    max_index = len(st.session_state.annotations) - 1
     current_index = st.number_input(
         "Image Index",
         min_value=0,
-        max_value=len(st.session_state.annotations) - 1,
+        max_value=max_index,
         value=st.session_state.current_index,
         step=1
     )
@@ -150,14 +152,16 @@ if st.session_state.annotations:
     # Navigation Buttons
     col1, col2 = st.columns([1, 1])
     with col1:
-        if st.button("Previous", disabled=(st.session_state.current_index == 0)):
-            st.session_state.annotations[st.session_state.current_index]["room_number"] = room_number
-            st.session_state.annotations[st.session_state.current_index]["meter_value"] = meter_value
+        if st.button("Previous", disabled=(current_index == 0)):
+            # Save current annotations before moving
+            st.session_state.annotations[current_index]["room_number"] = room_number
+            st.session_state.annotations[current_index]["meter_value"] = meter_value
             st.session_state.current_index -= 1
     with col2:
-        if st.button("Next", disabled=(st.session_state.current_index == len(st.session_state.annotations) - 1)):
-            st.session_state.annotations[st.session_state.current_index]["room_number"] = room_number
-            st.session_state.annotations[st.session_state.current_index]["meter_value"] = meter_value
+        if st.button("Next", disabled=(current_index == max_index)):
+            # Save current annotations before moving
+            st.session_state.annotations[current_index]["room_number"] = room_number
+            st.session_state.annotations[current_index]["meter_value"] = meter_value
             st.session_state.current_index += 1
 
 # Step 3: Export Results
