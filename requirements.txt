@@ -1,7 +1,8 @@
-streamlit==1.22.0
-Pillow==10.0.0
-pandas==2.0.3
-ultralytics==8.0.43
-easyocr==1.6.2
-numpy==1.23.5
-opencv-python-headless==4.8.0.76
+streamlit
+Pillow
+pandas
+ultralytics
+easyocr
+numpy
+opencv-python-headless
+yolov8
