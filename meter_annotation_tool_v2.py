@@ -7,10 +7,11 @@ import easyocr
 import numpy as np
 from datetime import datetime
 
-# Initialize variables
-output_excel = "results.xlsx"
-annotations = []
-current_index = 0
+# Initialize session state variables
+if "annotations" not in st.session_state:
+    st.session_state.annotations = []
+if "current_index" not in st.session_state:
+    st.session_state.current_index = 0
 
 # Directories for saving original and YOLO-ed images
 original_dir = "original_images"
@@ -91,7 +92,7 @@ st.header("Step 1: Upload Images")
 uploaded_files = st.file_uploader("Upload one or more images", type=["png", "jpg", "jpeg"], accept_multiple_files=True)
 
 if uploaded_files:
-    annotations.clear()
+    st.session_state.annotations.clear()
     progress_bar = st.progress(0)
     for i, uploaded_file in enumerate(uploaded_files):
         # Save the uploaded file temporarily
@@ -109,7 +110,7 @@ if uploaded_files:
                     "meter_value": perform_ocr(cropped_image),
                     "room_number": ""  # Initialize room number as empty
                 }
-                annotations.append(annotation)
+                st.session_state.annotations.append(annotation)
         else:
             annotation = {
                 "image_path": image_path,
@@ -117,50 +118,57 @@ if uploaded_files:
                 "meter_value": "",
                 "room_number": ""  # Initialize room number as empty
             }
-            annotations.append(annotation)
+            st.session_state.annotations.append(annotation)
         # Update progress bar
         progress_bar.progress((i + 1) / len(uploaded_files))
     st.success("All images processed successfully!")
 
 # Step 2: Annotate Images
-if annotations:
+if st.session_state.annotations:
     st.header("Step 2: Annotate Images")
-    current_index = st.number_input("Image Index", min_value=0, max_value=len(annotations) - 1, value=current_index, step=1)
-    annotation = annotations[current_index]
+    current_index = st.number_input(
+        "Image Index",
+        min_value=0,
+        max_value=len(st.session_state.annotations) - 1,
+        value=st.session_state.current_index,
+        step=1
+    )
+    st.session_state.current_index = current_index  # Persist index in session state
+    annotation = st.session_state.annotations[current_index]
 
     # Display original image
     original_image = Image.open(annotation["image_path"])
-    st.image(original_image, caption="Original Image", use_container_width =True)
+    st.image(original_image, caption="Original Image", use_column_width=True)
 
     # Display cropped image
     cropped_image = annotation["cropped_image"]
     if cropped_image:
-        st.image(cropped_image, caption="Cropped Image", use_container_width =True)
+        st.image(cropped_image, caption="Cropped Image", use_column_width=True)
 
     # Room Number Input
     room_number = st.text_input("Room Number", value=annotation["room_number"])
-    annotation["room_number"] = room_number
+    st.session_state.annotations[current_index]["room_number"] = room_number
 
     # Meter Value Input
     meter_value = st.text_input("Meter Value", value=annotation["meter_value"])
-    annotation["meter_value"] = meter_value
+    st.session_state.annotations[current_index]["meter_value"] = meter_value
 
     # Navigation Buttons
     col1, col2 = st.columns([1, 1])
     with col1:
         if st.button("Previous", disabled=(current_index == 0)):
-            current_index -= 1
+            st.session_state.current_index -= 1
     with col2:
-        if st.button("Next", disabled=(current_index == len(annotations) - 1)):
-            current_index += 1
+        if st.button("Next", disabled=(current_index == len(st.session_state.annotations) - 1)):
+            st.session_state.current_index += 1
 
 # Step 3: Export Results
-if annotations:
+if st.session_state.annotations:
     st.header("Step 3: Export Results")
     if st.button("Export to Excel"):
         # Prepare data for export
         data = []
-        for annotation in annotations:
+        for annotation in st.session_state.annotations:
             data.append({
                 "room_number": annotation["room_number"],
                 "meter_value": annotation["meter_value"]
@@ -173,7 +181,7 @@ if annotations:
         output_path = os.path.join(folder_name, output_excel)
         df.to_excel(output_path, index=False)
         # Save original images renamed to room numbers
-        for annotation in annotations:
+        for annotation in st.session_state.annotations:
             room_number = annotation["room_number"]
             if room_number:  # Only proceed if room number is not empty
                 original_image_path = annotation["image_path"]
