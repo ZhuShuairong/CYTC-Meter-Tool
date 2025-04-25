@@ -153,25 +153,23 @@ if st.session_state.annotations:
     # Meter Value Input
     meter_value = st.text_input("Meter Value", value=annotation["meter_value"])
     st.session_state.annotations[current_index]["meter_value"] = meter_value
-
-    # Navigation Buttons
-    col1, col2 = st.columns([1, 1])
-    with col1:
-        if st.button("Previous", disabled=(current_index == 0)):
-            # Save current annotations before moving
-            st.session_state.annotations[current_index]["room_number"] = room_number
-            st.session_state.annotations[current_index]["meter_value"] = meter_value
-            st.session_state.current_index -= 1
-            # Reset room number for new image
-            st.session_state.annotations[st.session_state.current_index]["room_number"] = ""
-    with col2:
-        if st.button("Next", disabled=(current_index == max_index)):
-            # Save current annotations before moving
-            st.session_state.annotations[current_index]["room_number"] = room_number
-            st.session_state.annotations[current_index]["meter_value"] = meter_value
-            st.session_state.current_index += 1
-            # Reset room number for new image
-            st.session_state.annotations[st.session_state.current_index]["room_number"] = ""
+    
+# Navigation Buttons
+col1, col2 = st.columns([1, 1])
+with col1:
+    if st.button("Previous", disabled=(current_index == 0)):
+        # Save current annotations before moving
+        st.session_state.annotations[current_index]["room_number"] = room_number
+        st.session_state.annotations[current_index]["meter_value"] = meter_value
+        st.session_state.current_index -= 1
+        # Removed line that resets room_number for new image
+with col2:
+    if st.button("Next", disabled=(current_index == max_index)):
+        # Save current annotations before moving
+        st.session_state.annotations[current_index]["room_number"] = room_number
+        st.session_state.annotations[current_index]["meter_value"] = meter_value
+        st.session_state.current_index += 1
+        # Removed line that resets room_number for new image
 
 # Step 3: Export Results
 if st.session_state.annotations:
