@@ -1,12 +1,10 @@
 streamlit
+opencv-python-headless
 Pillow
 pandas
-ultralytics==8.3.101  # Specify a compatible version
-easyocr
-numpy
-opencv-python
 torch>=1.13.1  # Required by ultralytics
 torchvision>=0.14.1  # Required by ultralytics
 tqdm  # Required by ultralytics
-libgl1 
-libglib2.0-0
+ultralytics==8.3.101  # Specify a compatible version
+easyocr
+numpy
