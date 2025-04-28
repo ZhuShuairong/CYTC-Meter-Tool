@@ -1,8 +1,9 @@
 streamlit
+ultralytics
+opencv-python
 Pillow
 pandas
 tqdm 
-ultralytics
 easyocr
 numpy
 opencv-python-headless
