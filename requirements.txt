@@ -3,7 +3,6 @@ ultralytics
 opencv-python
 Pillow
 pandas
-tqdm 
+tqdm
 easyocr
 numpy
-opencv-python-headless
