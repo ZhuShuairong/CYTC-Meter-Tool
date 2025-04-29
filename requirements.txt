@@ -1,7 +1,6 @@
-python==3.10.10
 streamlit
 ultralytics
-opencv-python
+opencv-python-headless
 Pillow
 pandas
 tqdm
